@@ -6,6 +6,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from config import TOKEN, ADMIN_ID
+from sqlite import db_start, create_profile, edit_profile
 
 storage = MemoryStorage
 bot = Bot(TOKEN)
@@ -28,6 +29,10 @@ def get_kb(my_list) -> ReplyKeyboardMarkup:
     return kb
 
 
+async def on_startup(_):
+    await db_start()
+
+
 @dp.message_handler(commands=['cancel'], state='*')
 async def ap_cancel(message: types.Message, state: FSMContext):
     if state is None:
@@ -42,6 +47,7 @@ async def ap_cancel(message: types.Message, state: FSMContext):
 async def ha_start(message: types.Message) -> None:
     await message.answer('Добро пожаловать! Чтобы отправить заявку, нажми /create_application ниже',
                          reply_markup=get_kb(['/create_application']))
+    await create_profile(user_id=message.from_user.id)
 
 
 @dp.message_handler(commands=['create_application'])
@@ -105,11 +111,12 @@ async def load_photo(message: types.Message, state: FSMContext) -> None:
                              photo=data['photo'],
                              caption=f"Новая заявка!\nИмя: {data['name']}\nТелефон: {data['tel']}\n" +
                                      f"Адрес: {data['address']}\nОписание: {data['description']}")
+    await edit_profile(state, user_id=message.from_user.id)
     await message.answer('Ваша заявка принята, ожидайте ответ!')
     await state.finish()
 
 
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
 
 
